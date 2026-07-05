@@ -594,6 +594,9 @@ function generatePuzzleGrid(entries, mode, size) {
 
 function findWordCells(grid, word) {
   if (!Array.isArray(grid) || !word) return [];
+  if (typeof grid[0] === 'string') {
+  grid = grid.map((row) => row.split(''));
+}
   const directions = [
     { row: 0, col: 1 },
     { row: 1, col: 0 },
@@ -909,7 +912,7 @@ app.post(['/api/puzzles', '/api/create-puzzle'], authenticate, asyncHandler(asyn
     creator: req.user.id,
     creatorName: req.user.name,
     words: generated.words,
-    grid: generated.grid,
+    grid: generated.grid.map((row) => row.join('')),
     url,
     qrData,
     createdAt: new Date().toISOString()
