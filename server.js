@@ -98,11 +98,13 @@ function getFirebaseAdmin() {
   const serviceAccount = firebaseServiceAccount();
   if (!serviceAccount) return null;
 
-  if (!admin.apps.length) {
-    admin.initializeApp({
-      credential: admin.credential.cert(serviceAccount)
-    });
-  }
+  try {
+  admin.app();
+} catch (error) {
+  admin.initializeApp({
+    credential: admin.credential.cert(serviceAccount)
+  });
+}
 
   return admin;
 }
