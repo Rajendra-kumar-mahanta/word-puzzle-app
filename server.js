@@ -5,7 +5,7 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const QRCode = require('qrcode');
 const cors = require('cors');
-const { initializeApp, getApps } = require('firebase-admin/app');
+const { initializeApp, getApps, cert } = require('firebase-admin/app');
 const { getFirestore: getAdminFirestore } = require('firebase-admin/firestore');
 const { getAuth } = require('firebase-admin/auth');
 
@@ -67,11 +67,41 @@ function writeJson(filePath, data) {
   fs.writeFileSync(filePath, JSON.stringify(data, null, 2), 'utf8');
 }
 
+function httpError(statusCode, message) {
+  const error = new Error(message);
+  error.statusCode = statusCode;
+  return error;
+}
+
 function ensureDataFiles() {
   if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
   if (!fs.existsSync(USERS_FILE)) writeJson(USERS_FILE, { users: [] });
   if (!fs.existsSync(PUZZLES_FILE)) writeJson(PUZZLES_FILE, { puzzles: [] });
   if (!fs.existsSync(SUBMISSIONS_FILE)) writeJson(SUBMISSIONS_FILE, { submissions: [] });
+}
+
+function isHostedRuntime() {
+  return Boolean(process.env.VERCEL || process.env.NODE_ENV === 'production');
+}
+
+function firebaseConfigStatus() {
+  const hasProjectId = Boolean(process.env.FIREBASE_PROJECT_ID);
+  const hasClientEmail = Boolean(process.env.FIREBASE_CLIENT_EMAIL);
+  const hasPrivateKey = Boolean(process.env.FIREBASE_PRIVATE_KEY);
+  const hasBase64 = Boolean(process.env.FIREBASE_SERVICE_ACCOUNT_BASE64);
+  const hasWebApiKey = Boolean(firebaseWebApiKey());
+  const splitVarsReady = hasProjectId && hasClientEmail && hasPrivateKey;
+
+  return {
+    hostedRuntime: isHostedRuntime(),
+    localFallback: !isHostedRuntime() && !hasBase64 && !splitVarsReady,
+    webApiKey: hasWebApiKey ? 'set' : 'missing',
+    serviceAccount: hasBase64 ? 'base64' : splitVarsReady ? 'split-vars' : 'missing',
+    projectId: hasProjectId ? 'set' : 'missing',
+    clientEmail: hasClientEmail ? 'set' : 'missing',
+    privateKey: hasPrivateKey ? 'set' : 'missing',
+    base64ServiceAccount: hasBase64 ? 'set' : 'missing'
+  };
 }
 
 function firebasePrivateKey() {
@@ -82,15 +112,40 @@ function firebasePrivateKey() {
 
 function firebaseServiceAccount() {
   if (process.env.FIREBASE_SERVICE_ACCOUNT_BASE64) {
-    return JSON.parse(Buffer.from(process.env.FIREBASE_SERVICE_ACCOUNT_BASE64, 'base64').toString('utf8'));
+    try {
+      return JSON.parse(Buffer.from(process.env.FIREBASE_SERVICE_ACCOUNT_BASE64, 'base64').toString('utf8'));
+    } catch (error) {
+      throw httpError(500, 'FIREBASE_SERVICE_ACCOUNT_BASE64 is not valid base64-encoded service account JSON.');
+    }
   }
 
-  if (process.env.FIREBASE_PROJECT_ID && process.env.FIREBASE_CLIENT_EMAIL && process.env.FIREBASE_PRIVATE_KEY) {
+  const hasProjectId = Boolean(process.env.FIREBASE_PROJECT_ID);
+  const hasClientEmail = Boolean(process.env.FIREBASE_CLIENT_EMAIL);
+  const hasPrivateKey = Boolean(process.env.FIREBASE_PRIVATE_KEY);
+  const hasAnySplitVar = hasProjectId || hasClientEmail || hasPrivateKey;
+
+  if (hasProjectId && hasClientEmail && hasPrivateKey) {
     return {
       projectId: process.env.FIREBASE_PROJECT_ID,
       clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
       privateKey: firebasePrivateKey()
     };
+  }
+
+  if (hasAnySplitVar) {
+    const missing = [
+      ['FIREBASE_PROJECT_ID', hasProjectId],
+      ['FIREBASE_CLIENT_EMAIL', hasClientEmail],
+      ['FIREBASE_PRIVATE_KEY', hasPrivateKey]
+    ]
+      .filter(([, exists]) => !exists)
+      .map(([key]) => key)
+      .join(', ');
+    throw httpError(500, `Firebase service account env vars are incomplete. Missing: ${missing}.`);
+  }
+
+  if (isHostedRuntime()) {
+    throw httpError(500, 'Firebase service account env vars are missing in Vercel. Add FIREBASE_PROJECT_ID, FIREBASE_CLIENT_EMAIL, and FIREBASE_PRIVATE_KEY, or add FIREBASE_SERVICE_ACCOUNT_BASE64.');
   }
 
   return null;
@@ -102,7 +157,7 @@ function getFirebaseAdmin() {
 
   if (!getApps().length) {
     initializeApp({
-      credential: require('firebase-admin/app').cert(serviceAccount)
+      credential: cert(serviceAccount)
     });
   }
 
@@ -115,7 +170,7 @@ function getFirestore() {
 
   if (!getApps().length) {
     initializeApp({
-      credential: require('firebase-admin/app').cert(serviceAccount)
+      credential: cert(serviceAccount)
     });
   }
 
@@ -130,10 +185,21 @@ function firebaseWebApiKey() {
   return process.env.FIREBASE_WEB_API_KEY || process.env.FIREBASE_API_KEY || '';
 }
 
+function shouldUseFirebaseAuth() {
+  return isHostedRuntime() || Boolean(firebaseWebApiKey() || process.env.FIREBASE_SERVICE_ACCOUNT_BASE64 || process.env.FIREBASE_PROJECT_ID || process.env.FIREBASE_CLIENT_EMAIL || process.env.FIREBASE_PRIVATE_KEY);
+}
+
+function ensureFirebaseAuthReady() {
+  firebaseServiceAccount();
+  if (!firebaseWebApiKey()) {
+    throw httpError(500, 'Firebase web API key is missing. Add FIREBASE_WEB_API_KEY in Vercel.');
+  }
+}
+
 async function firebaseAuthRequest(action, body) {
   const apiKey = firebaseWebApiKey();
   if (!apiKey) {
-    throw new Error('Firebase web API key is missing. Set FIREBASE_WEB_API_KEY in Vercel.');
+    throw httpError(500, 'Firebase web API key is missing. Add FIREBASE_WEB_API_KEY in Vercel.');
   }
 
   const response = await fetch(`https://identitytoolkit.googleapis.com/v1/${action}?key=${apiKey}`, {
@@ -145,10 +211,23 @@ async function firebaseAuthRequest(action, body) {
 
   if (!response.ok) {
     const code = data.error && data.error.message ? data.error.message : 'FIREBASE_AUTH_FAILED';
-    throw new Error(firebaseAuthMessage(code));
+    throw httpError(firebaseAuthStatus(code), firebaseAuthMessage(code));
   }
 
   return data;
+}
+
+function firebaseAuthStatus(code) {
+  const statuses = {
+    EMAIL_EXISTS: 409,
+    EMAIL_NOT_FOUND: 401,
+    INVALID_PASSWORD: 401,
+    INVALID_LOGIN_CREDENTIALS: 401,
+    USER_DISABLED: 403,
+    WEAK_PASSWORD: 400,
+    INVALID_EMAIL: 400
+  };
+  return statuses[code] || 400;
 }
 
 function firebaseAuthMessage(code) {
@@ -642,7 +721,8 @@ app.post(['/api/auth/register', '/api/register'], asyncHandler(async (req, res) 
     return res.status(400).json({ error: 'Password must be at least 6 characters.' });
   }
 
-  if (usingFirestore()) {
+  if (shouldUseFirebaseAuth()) {
+    ensureFirebaseAuthReady();
     const authData = await firebaseAuthRequest('accounts:signUp', {
       email,
       password,
@@ -701,7 +781,8 @@ app.post(['/api/auth/login', '/api/login'], asyncHandler(async (req, res) => {
   const email = normalizeEmail(req.body.email);
   const password = String(req.body.password || '');
 
-  if (usingFirestore()) {
+  if (shouldUseFirebaseAuth()) {
+    ensureFirebaseAuthReady();
     const authData = await firebaseAuthRequest('accounts:signInWithPassword', {
       email,
       password,
@@ -742,7 +823,8 @@ app.get('/api/auth/me', authenticate, (req, res) => {
 app.post('/api/reset-password', asyncHandler(async (req, res) => {
   const email = normalizeEmail(req.body.email);
 
-  if (usingFirestore()) {
+  if (shouldUseFirebaseAuth()) {
+    ensureFirebaseAuthReady();
     await firebaseAuthRequest('accounts:sendOobCode', {
       requestType: 'PASSWORD_RESET',
       email
@@ -946,7 +1028,31 @@ app.get(['/api/puzzles/:id/top-leaderboard', '/api/leaderboard/:id'], asyncHandl
 }));
 
 app.get('/api/health', (req, res) => {
-  res.json({ ok: true, status: 'running' });
+  const firebase = firebaseConfigStatus();
+  let admin = 'not-configured';
+  let adminError = '';
+
+  try {
+    admin = getFirestore() ? 'ready' : 'local-fallback';
+  } catch (error) {
+    admin = 'error';
+    adminError = error.message;
+  }
+
+  res.json({
+    ok: true,
+    status: 'running',
+    runtime: {
+      node: process.version,
+      vercel: process.env.VERCEL ? 'yes' : 'no',
+      nodeEnv: process.env.NODE_ENV || 'unset'
+    },
+    firebase: {
+      ...firebase,
+      admin,
+      adminError
+    }
+  });
 });
 
 app.get(/.*/, (req, res) => {
@@ -955,10 +1061,13 @@ app.get(/.*/, (req, res) => {
 
 app.use((error, req, res, next) => {
   console.error(error);
-  return res.status(500).json({ error: error.message || 'Server error.' });
+  const statusCode = error.statusCode || error.status || 500;
+  return res.status(statusCode).json({ error: error.message || 'Server error.' });
 });
 
-if (!usingFirestore()) ensureDataFiles();
+if (!isHostedRuntime() && !process.env.FIREBASE_SERVICE_ACCOUNT_BASE64 && !process.env.FIREBASE_PROJECT_ID && !process.env.FIREBASE_CLIENT_EMAIL && !process.env.FIREBASE_PRIVATE_KEY) {
+  ensureDataFiles();
+}
 
 if (require.main === module) {
   app.listen(PORT, () => {

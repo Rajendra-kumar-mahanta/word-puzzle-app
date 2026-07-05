@@ -75,11 +75,14 @@ async function api(path, options = {}) {
   if (state.token) headers.Authorization = `Bearer ${state.token}`;
 
   const response = await fetch(`/api${path}`, { cache: 'no-store', ...options, headers });
-  const data = await response.json().catch(() => ({}));
+  const contentType = response.headers.get('content-type') || '';
+  const data = contentType.includes('application/json')
+    ? await response.json().catch(() => ({}))
+    : { error: (await response.text().catch(() => '')).slice(0, 180) };
 
   if (!response.ok) {
     if (response.status === 401) clearSession();
-    throw new Error(data.error || 'Request failed.');
+    throw new Error(data.error || `Request failed with status ${response.status}.`);
   }
 
   return data;

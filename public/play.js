@@ -35,11 +35,15 @@ function queryParam(name) {
 
 async function api(path, options = {}) {
   const response = await fetch(`/api${path}`, {
+    cache: 'no-store',
     ...options,
     headers: { 'Content-Type': 'application/json', ...(options.headers || {}) }
   });
-  const data = await response.json().catch(() => ({}));
-  if (!response.ok) throw new Error(data.error || 'Request failed.');
+  const contentType = response.headers.get('content-type') || '';
+  const data = contentType.includes('application/json')
+    ? await response.json().catch(() => ({}))
+    : { error: (await response.text().catch(() => '')).slice(0, 180) };
+  if (!response.ok) throw new Error(data.error || `Request failed with status ${response.status}.`);
   return data;
 }
 
