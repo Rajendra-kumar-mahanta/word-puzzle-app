@@ -244,6 +244,28 @@ function formatWordNames(words = []) {
   return words.map((word) => (typeof word === 'string' ? word : word.text)).join(', ');
 }
 
+function normalizePuzzleGrid(grid) {
+  if (!Array.isArray(grid) || grid.length === 0) return [];
+
+  const matrix = grid.map((row) => {
+    if (typeof row === 'string') return Array.from(row);
+    if (Array.isArray(row)) return row.map((cell) => String(cell || ''));
+    return null;
+  });
+
+  if (matrix.some((row) => !Array.isArray(row) || row.length === 0)) return [];
+
+  const columnCount = matrix[0].length;
+  const isValid = matrix.every((row) => row.length === columnCount && row.every((cell) => cell.length > 0));
+  return isValid ? matrix : [];
+}
+
+function puzzlePlayUrl(puzzle) {
+  if (puzzle.playUrl) return puzzle.playUrl;
+  if (puzzle.url) return `${window.location.origin}${puzzle.url}`;
+  return `${window.location.origin}/play.html?id=${encodeURIComponent(puzzle.id)}`;
+}
+
 async function handleLogin(event) {
   event.preventDefault();
   const email = document.getElementById('login-email').value.trim();
@@ -431,6 +453,11 @@ function renderPuzzleCards(container, puzzles, emptyMessage) {
     overview.className = 'muted-line puzzle-overview';
     overview.textContent = puzzle.overview || 'No teacher note added.';
 
+    const grid = document.createElement('div');
+    grid.className = 'puzzle-grid card-grid';
+    grid.setAttribute('aria-label', `${puzzle.title} puzzle grid`);
+    renderGrid(grid, puzzle.grid);
+
     const actions = document.createElement('div');
     actions.className = 'card-actions';
 
@@ -440,14 +467,30 @@ function renderPuzzleCards(container, puzzles, emptyMessage) {
     detailButton.textContent = 'Details';
     detailButton.addEventListener('click', () => openPuzzleDetail(puzzle.id));
 
+    const openLink = document.createElement('a');
+    openLink.className = 'button-link small';
+    openLink.href = puzzlePlayUrl(puzzle);
+    openLink.target = '_blank';
+    openLink.rel = 'noreferrer';
+    openLink.textContent = 'Open';
+
+    const copyButton = document.createElement('button');
+    copyButton.type = 'button';
+    copyButton.className = 'secondary-button small';
+    copyButton.textContent = 'Copy Link';
+    copyButton.addEventListener('click', async () => {
+      await copyText(puzzlePlayUrl(puzzle));
+      showMessage(elements.puzzleMessage, 'Puzzle link copied.', 'success');
+    });
+
     const toggleButton = document.createElement('button');
     toggleButton.type = 'button';
     toggleButton.className = puzzle.active === false ? 'secondary-button small' : 'ghost-button small';
-    toggleButton.textContent = puzzle.active === false ? 'Make live' : 'Close';
+    toggleButton.textContent = puzzle.active === false ? 'Reopen' : 'Close';
     toggleButton.addEventListener('click', () => updatePuzzleStatus(puzzle.id, puzzle.active === false));
 
-    actions.append(detailButton, toggleButton);
-    card.append(head, overview, createPuzzleMeta(puzzle), actions);
+    actions.append(detailButton, openLink, copyButton, toggleButton);
+    card.append(head, overview, createPuzzleMeta(puzzle), grid, actions);
     container.appendChild(card);
   });
 }
@@ -490,7 +533,7 @@ function renderPuzzleDetail(puzzle) {
   elements.detailMeta.innerHTML = '';
   elements.detailMeta.append(...Array.from(createPuzzleMeta(puzzle).children));
 
-  renderGrid(elements.detailGrid, puzzle.grid || []);
+  renderGrid(elements.detailGrid, puzzle.grid);
   renderWordDetailList(puzzle.words || []);
   renderDetailShare(puzzle);
   renderLeaderboard(elements.detailTopLeaderboard, puzzle.topLeaderboard || []);
@@ -514,9 +557,20 @@ function renderDetailShare(puzzle) {
 
 function renderGrid(container, matrix) {
   container.innerHTML = '';
-  container.style.gridTemplateColumns = `repeat(${matrix.length || 10}, minmax(0, 1fr))`;
+  const normalizedGrid = normalizePuzzleGrid(matrix);
 
-  matrix.forEach((row) => {
+  if (!normalizedGrid.length) {
+    container.style.gridTemplateColumns = 'minmax(0, 1fr)';
+    const empty = document.createElement('p');
+    empty.className = 'puzzle-grid-empty';
+    empty.textContent = 'No puzzle grid available.';
+    container.appendChild(empty);
+    return;
+  }
+
+  container.style.gridTemplateColumns = `repeat(${normalizedGrid[0].length}, minmax(0, 1fr))`;
+
+  normalizedGrid.forEach((row) => {
     row.forEach((letter) => {
       const cell = document.createElement('div');
       cell.className = 'puzzle-cell';

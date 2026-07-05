@@ -416,6 +416,7 @@ async function puzzleForCreator(puzzle, req) {
     active: puzzle.active !== false,
     createdAt: puzzle.createdAt,
     size: puzzle.size || getGridSizeFromGrid(puzzle.grid),
+    grid: normalizeGridForClient(puzzle.grid),
     wordCount: words.length,
     words: words.map((word) => ({ text: word.text, description: word.description })),
     playerCount: players.length,
