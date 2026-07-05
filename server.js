@@ -374,7 +374,15 @@ function getPuzzleWords(puzzle) {
     })
     .filter((entry) => entry.text.length > 0);
 }
+function normalizeGridForClient(grid) {
+  if (!Array.isArray(grid)) return [];
 
+  if (typeof grid[0] === 'string') {
+    return grid.map((row) => row.split(''));
+  }
+
+  return grid;
+}
 function publicPuzzle(puzzle) {
   const words = getPuzzleWords(puzzle);
   return {
@@ -386,7 +394,7 @@ function publicPuzzle(puzzle) {
     creatorName: puzzle.creatorName,
     createdAt: puzzle.createdAt,
     size: puzzle.size || getGridSizeFromGrid(puzzle.grid),
-    grid: puzzle.grid,
+    grid: normalizeGridForClient(puzzle.grid),
     wordCount: words.length
   };
 }
