@@ -1,0 +1,9 @@
+node_modules/
+.env
+.env.local
+.env.*.local
+.vercel/
+npm-debug.log*
+
+# Local JSON fallback data. Production uses Firestore.
+data/*.json

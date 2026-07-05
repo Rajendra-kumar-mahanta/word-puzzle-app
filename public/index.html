@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>Class Puzzle Test</title>
+  <link rel="stylesheet" href="styles.css?v=academic-polish-20260704-02" />
+</head>
+<body>
+  <main class="app-shell">
+    <section id="auth-view" class="landing-view">
+      <section class="landing-hero" aria-labelledby="landing-title">
+        <img src="assets/classroom-test-hero.png" alt="" aria-hidden="true" />
+        <div class="landing-overlay"></div>
+        <div class="landing-copy">
+          <a class="brand light-brand" href="/" aria-label="Class Puzzle Test home">
+            <span class="brand-mark">CP</span>
+            <span class="brand-copy">
+              <span>Class Puzzle Test</span>
+              <small>Mobile classroom assessment</small>
+            </span>
+          </a>
+          <div>
+            <span class="eyebrow light">For teachers</span>
+            <h1 id="landing-title">Create polished word tests for your class.</h1>
+            <p>Build puzzle tests, share QR links, and view student results from your private dashboard.</p>
+          </div>
+        </div>
+      </section>
+
+      <section class="panel auth-panel" aria-label="Account access">
+        <div class="panel-heading">
+          <div>
+            <span class="eyebrow">Account</span>
+            <h2>Teacher Access</h2>
+          </div>
+        </div>
+
+        <div class="segmented-control auth-tabs" role="tablist" aria-label="Authentication">
+          <button id="tab-login" class="active" type="button">Login</button>
+          <button id="tab-register" type="button">Sign up</button>
+          <button id="tab-forgot" type="button">Forgot</button>
+        </div>
+
+        <form id="login-form" class="form-stack">
+          <label for="login-email">Email address</label>
+          <input id="login-email" name="email" type="email" autocomplete="email" required />
+
+          <label for="login-password">Password</label>
+          <input id="login-password" name="password" type="password" autocomplete="current-password" required />
+
+          <button class="primary-button" type="submit">Login to dashboard</button>
+        </form>
+
+        <form id="register-form" class="form-stack hidden">
+          <label for="register-name">Teacher name</label>
+          <input id="register-name" name="name" type="text" autocomplete="name" required />
+
+          <label for="register-email">Email address</label>
+          <input id="register-email" name="email" type="email" autocomplete="email" required />
+
+          <label for="register-password">Password</label>
+          <input id="register-password" name="password" type="password" autocomplete="new-password" minlength="6" required />
+
+          <button class="primary-button" type="submit">Create teacher account</button>
+        </form>
+
+        <form id="forgot-form" class="form-stack hidden">
+          <p class="muted-line">Enter your account email. This local build confirms the request and can be connected to email later.</p>
+
+          <label for="forgot-email">Email address</label>
+          <input id="forgot-email" name="email" type="email" autocomplete="email" required />
+
+          <button class="primary-button" type="submit">Request password reset</button>
+        </form>
+
+        <p id="auth-message" class="status-message" role="status"></p>
+      </section>
+    </section>
+
+    <section id="dashboard-view" class="dashboard-layout hidden">
+      <header class="topbar">
+        <a class="brand" href="/" aria-label="Class Puzzle Test dashboard">
+          <span class="brand-mark">CP</span>
+          <span class="brand-copy">
+            <span>Class Puzzle Test</span>
+            <small>Your private dashboard</small>
+          </span>
+        </a>
+        <div class="topbar-actions">
+          <span id="signed-in-user" class="signed-in-user hidden"></span>
+          <button id="btn-logout" class="ghost-button compact hidden" type="button">Sign out</button>
+        </div>
+      </header>
+
+      <section class="dashboard-summary" aria-label="Dashboard summary">
+        <div>
+          <span class="eyebrow">Dashboard</span>
+          <h1>Manage your class tests</h1>
+          <p>Only puzzles created by this account appear here.</p>
+        </div>
+        <div class="summary-grid">
+          <div class="summary-tile">
+            <strong id="dashboard-live-count">0</strong>
+            <span>Live</span>
+          </div>
+          <div class="summary-tile">
+            <strong id="dashboard-closed-count">0</strong>
+            <span>Closed</span>
+          </div>
+          <div class="summary-tile">
+            <strong id="dashboard-player-count">0</strong>
+            <span>Students</span>
+          </div>
+        </div>
+      </section>
+
+      <nav class="mobile-nav two-tab-nav" aria-label="Dashboard pages">
+        <button class="nav-tab active" type="button" data-page="home-page">Home</button>
+        <button class="nav-tab" type="button" data-page="create-page">Create</button>
+      </nav>
+
+      <section id="home-page" class="dashboard-page">
+        <section class="panel">
+          <div class="panel-heading">
+            <div>
+              <span class="eyebrow">Live</span>
+              <h2>Accepting Replies</h2>
+            </div>
+            <button id="btn-refresh-puzzles" class="ghost-button compact" type="button">Refresh</button>
+          </div>
+          <div id="live-puzzle-list" class="puzzle-list"></div>
+        </section>
+
+        <section class="panel">
+          <div class="panel-heading">
+            <div>
+              <span class="eyebrow">Previous</span>
+              <h2>Closed Puzzles</h2>
+            </div>
+          </div>
+          <div id="closed-puzzle-list" class="puzzle-list"></div>
+          <p id="puzzle-message" class="status-message" role="status"></p>
+        </section>
+      </section>
+
+      <section id="detail-page" class="dashboard-page hidden">
+        <section class="panel detail-panel">
+          <div class="panel-heading">
+            <div>
+              <span id="detail-status" class="eyebrow">Puzzle</span>
+              <h2 id="detail-title">Puzzle Details</h2>
+              <p id="detail-overview" class="muted-line"></p>
+            </div>
+            <button id="btn-back-home" class="ghost-button compact" type="button">Back</button>
+          </div>
+          <div id="detail-meta" class="puzzle-meta-row"></div>
+          <div id="detail-grid" class="puzzle-grid detail-grid" aria-label="Puzzle grid"></div>
+          <div class="detail-actions">
+            <a id="detail-open-link" class="button-link small" href="#" target="_blank" rel="noreferrer">Open</a>
+            <button id="btn-detail-copy" class="secondary-button small" type="button">Copy link</button>
+            <button id="btn-toggle-active" class="ghost-button small" type="button">Close replies</button>
+          </div>
+        </section>
+
+        <section class="panel">
+          <div class="panel-heading">
+            <div>
+              <span class="eyebrow">Words</span>
+              <h2>Words and Descriptions</h2>
+            </div>
+          </div>
+          <div id="detail-word-list" class="word-detail-list"></div>
+        </section>
+
+        <section class="panel detail-share-panel">
+          <div class="panel-heading">
+            <div>
+              <span class="eyebrow">Student Access</span>
+              <h2>QR Code and Link</h2>
+              <p class="muted-line">Students can scan this QR code or open the link while the puzzle is live.</p>
+            </div>
+          </div>
+          <div class="qr-frame">
+            <img id="detail-qr" class="qr-image" alt="Puzzle QR code" />
+          </div>
+          <a id="detail-share-link" class="share-link" href="#" target="_blank" rel="noreferrer"></a>
+        </section>
+
+        <section class="panel">
+          <div class="panel-heading">
+            <div>
+              <span class="eyebrow">Leaderboard</span>
+              <h2>Top 3 Students</h2>
+            </div>
+          </div>
+          <ol id="detail-top-leaderboard" class="leaderboard"></ol>
+        </section>
+
+        <section class="panel">
+          <div class="panel-heading">
+            <div>
+              <span class="eyebrow">All Results</span>
+              <h2>Entire Leaderboard</h2>
+            </div>
+          </div>
+          <ol id="detail-full-leaderboard" class="leaderboard"></ol>
+        </section>
+      </section>
+
+      <section id="create-page" class="dashboard-page hidden">
+        <section id="create-section" class="panel creator-panel">
+          <div class="panel-heading">
+            <div>
+              <span class="eyebrow">Builder</span>
+              <h2>Create Puzzle Test</h2>
+            </div>
+            <span class="size-badge">10x10 to 15x15</span>
+          </div>
+
+          <form id="puzzle-form" class="form-stack">
+            <div class="field-grid two-columns">
+              <div>
+                <label for="puzzle-title">Test title</label>
+                <input id="puzzle-title" name="title" type="text" maxlength="120" placeholder="Chapter 3 Revision" required />
+              </div>
+              <div>
+                <label for="puzzle-overview">Teacher note</label>
+                <input id="puzzle-overview" name="overview" type="text" maxlength="700" placeholder="Optional instruction for students" />
+              </div>
+            </div>
+
+            <fieldset class="mode-field">
+              <legend>Difficulty mode</legend>
+              <div class="mode-control three-mode-control">
+                <label>
+                  <input type="radio" name="puzzle-mode" value="easy" checked />
+                  <span>Easy</span>
+                </label>
+                <label>
+                  <input type="radio" name="puzzle-mode" value="moderate" />
+                  <span>Moderate</span>
+                </label>
+                <label>
+                  <input type="radio" name="puzzle-mode" value="hard" />
+                  <span>Hard</span>
+                </label>
+              </div>
+            </fieldset>
+
+            <div id="word-rows" class="word-rows"></div>
+
+            <div class="inline-actions">
+              <button id="btn-add-word" class="secondary-button" type="button">Add word</button>
+              <button class="primary-button" type="submit">Create puzzle</button>
+            </div>
+          </form>
+
+          <p id="create-message" class="status-message" role="status"></p>
+        </section>
+      </section>
+
+      <section id="share-page" class="dashboard-page hidden">
+        <section class="panel share-result-panel">
+          <div class="panel-heading">
+            <div>
+              <span class="eyebrow">Ready</span>
+              <h2 id="share-title">Puzzle Created</h2>
+              <p id="share-meta" class="muted-line"></p>
+            </div>
+          </div>
+          <div class="qr-frame">
+            <img id="share-qr" class="qr-image" alt="Puzzle QR code" />
+          </div>
+          <a id="share-link" class="share-link" href="#" target="_blank" rel="noreferrer"></a>
+          <div class="detail-actions">
+            <button id="btn-share-copy" class="secondary-button small" type="button">Copy link</button>
+            <button id="btn-share-detail" class="primary-button small" type="button">View details</button>
+            <button id="btn-create-another" class="ghost-button small" type="button">Create another</button>
+          </div>
+        </section>
+      </section>
+    </section>
+  </main>
+
+  <script src="app.js?v=classroom-workflow-20260703-02"></script>
+</body>
+</html>

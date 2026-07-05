@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>Play Class Puzzle Test</title>
+  <link rel="stylesheet" href="styles.css?v=academic-polish-20260704-02" />
+</head>
+<body>
+  <div class="app-shell">
+    <header class="topbar">
+      <a class="brand" href="/" aria-label="Class Puzzle Test home">
+        <span class="brand-mark">CP</span>
+        <span class="brand-copy">
+          <span>Class Puzzle Test</span>
+          <small>Student test</small>
+        </span>
+      </a>
+      <span id="player-progress" class="progress-pill hidden"></span>
+    </header>
+
+    <main>
+      <section id="join-panel" class="panel join-panel">
+        <div class="panel-heading">
+          <div>
+            <span class="eyebrow">Play</span>
+            <h1 id="join-title">Join Puzzle</h1>
+          </div>
+          <span id="join-word-count" class="size-badge hidden"></span>
+        </div>
+
+        <form id="join-form" class="form-stack">
+          <label for="play-id">Puzzle ID</label>
+          <input id="play-id" name="puzzleId" type="text" required />
+
+          <div class="field-grid two-columns">
+            <div>
+              <label for="play-rollno">Roll number</label>
+              <input id="play-rollno" name="rollNo" type="text" autocomplete="off" required />
+            </div>
+            <div>
+              <label for="play-name">Name</label>
+              <input id="play-name" name="name" type="text" autocomplete="name" required />
+            </div>
+          </div>
+
+          <button class="primary-button" type="submit">Start</button>
+        </form>
+        <p id="join-message" class="status-message" role="status"></p>
+      </section>
+
+      <section id="game-layout" class="game-layout hidden">
+        <section class="panel puzzle-panel">
+          <div class="panel-heading">
+            <div>
+              <span class="eyebrow">Puzzle</span>
+              <h1 id="puzzle-title"></h1>
+              <p id="puzzle-meta" class="muted-line"></p>
+            </div>
+            <span id="word-count" class="size-badge"></span>
+          </div>
+
+          <div class="puzzle-grid-shell">
+            <div id="puzzle-grid" class="puzzle-grid" aria-label="Word puzzle grid"></div>
+          </div>
+        </section>
+
+        <aside class="side-stack">
+          <section class="panel answer-panel">
+            <div class="panel-heading">
+              <div>
+                <span class="eyebrow">Answers</span>
+                <h2>Found Words</h2>
+              </div>
+            </div>
+            <form id="word-form" class="form-stack">
+              <div id="word-inputs" class="word-inputs"></div>
+              <button class="primary-button sticky-submit" type="submit">Check words</button>
+            </form>
+            <p id="play-message" class="status-message" role="status"></p>
+          </section>
+
+          <section id="top-three-panel" class="panel completion-panel hidden">
+            <div class="panel-heading">
+              <div>
+                <span class="eyebrow">Completed</span>
+                <h2>Top 3</h2>
+              </div>
+            </div>
+            <ol id="top-three-list" class="leaderboard"></ol>
+          </section>
+        </aside>
+      </section>
+    </main>
+  </div>
+
+  <div id="description-popup" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="popup-title">
+    <div class="modal-card">
+      <h2 id="popup-title">Description</h2>
+      <div id="popup-description" class="popup-description"></div>
+      <button id="btn-close-popup" class="primary-button" type="button">Close</button>
+    </div>
+  </div>
+
+  <script src="play.js?v=classroom-workflow-20260703-02"></script>
+</body>
+</html>
