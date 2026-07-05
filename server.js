@@ -5,7 +5,9 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const QRCode = require('qrcode');
 const cors = require('cors');
-const admin = require('firebase-admin');
+const { initializeApp, getApps } = require('firebase-admin/app');
+const { getFirestore: getAdminFirestore } = require('firebase-admin/firestore');
+const { getAuth } = require('firebase-admin/auth');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -98,20 +100,26 @@ function getFirebaseAdmin() {
   const serviceAccount = firebaseServiceAccount();
   if (!serviceAccount) return null;
 
-  try {
-  admin.app();
-} catch (error) {
-  admin.initializeApp({
-    credential: admin.credential.cert(serviceAccount)
-  });
-}
+  if (!getApps().length) {
+    initializeApp({
+      credential: require('firebase-admin/app').cert(serviceAccount)
+    });
+  }
 
-  return admin;
+  return { auth: getAuth };
 }
 
 function getFirestore() {
-  const firebase = getFirebaseAdmin();
-  return firebase ? firebase.firestore() : null;
+  const serviceAccount = firebaseServiceAccount();
+  if (!serviceAccount) return null;
+
+  if (!getApps().length) {
+    initializeApp({
+      credential: require('firebase-admin/app').cert(serviceAccount)
+    });
+  }
+
+  return getAdminFirestore();
 }
 
 function usingFirestore() {
