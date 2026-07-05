@@ -594,9 +594,10 @@ function generatePuzzleGrid(entries, mode, size) {
 
 function findWordCells(grid, word) {
   if (!Array.isArray(grid) || !word) return [];
+
   if (typeof grid[0] === 'string') {
-  grid = grid.map((row) => row.split(''));
-}
+    grid = grid.map((row) => row.split(''));
+  }
   const directions = [
     { row: 0, col: 1 },
     { row: 1, col: 0 },
