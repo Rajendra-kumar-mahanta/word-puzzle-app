@@ -935,7 +935,11 @@ app.get(['/api/puzzles/:id/top-leaderboard', '/api/leaderboard/:id'], asyncHandl
   return res.json({ leaderboard: await serializeLeaderboard(puzzle.id, 3) });
 }));
 
-app.get('*', (req, res) => {
+app.get('/api/health', (req, res) => {
+  res.json({ ok: true, status: 'running' });
+});
+
+app.get(/.*/, (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
